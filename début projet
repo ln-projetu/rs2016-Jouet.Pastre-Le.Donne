@@ -1,0 +1,1 @@
+%main argument fichier -> récuperer la structure POSIX header, puis lire cette structure, lister 

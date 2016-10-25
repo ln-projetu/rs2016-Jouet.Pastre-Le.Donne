@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <string.h>
 
 struct header_posix_ustar {
                    char name[100];
@@ -27,6 +28,7 @@ struct header_posix_ustar {
 
 int main(int argc, char *argv[]) {
   int opt;
+  char* suite=NULL;
   char optstring[]="xlpz";
   //char test[512];
   int fd = open(argv[argc-1],O_RDONLY);
@@ -46,7 +48,35 @@ int main(int argc, char *argv[]) {
     switch (opt){
       case 'x':
         printf("option x \n");
+        int fd2 = open(argv[argc-1],O_RDONLY);
+        while(read(fd2,&ma_struct,512)!=0) {
+          if(strcmp(ma_struct.name,"\0")!=0) {
+            if ((suite=strrchr(ma_struct.name,'/'))!=NULL) {
+              printf("%s\n",suite);
+              if (strcmp(suite,"/\0")==0) {
+                if(fork()==0) {
+                  execl("/bin/mkdir","mkdir",ma_struct.name,NULL);
+                  exit(0);
+                }
+              }
+              else {
+                if(fork()==0) {
+                  execl("/bin/touch","touch",ma_struct.name,NULL);
+                  exit(0);
+                }
+              }
+            }
+            else {
+              if(fork()==0) {
+                execl("/bin/touch","touch",ma_struct.name,NULL);
+                exit(0);
+              }
+            }
+          }
+        }
+        close(fd2);
         break;
+
       case 'l':
         printf("option l \n" );
         break;

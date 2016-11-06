@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
-
+#include <math.h>
 struct header_posix_ustar {
                    char name[100];
                    char mode[8];
@@ -25,24 +25,44 @@ struct header_posix_ustar {
                    char prefix[155];
                    char pad[12];
            };
+long long convertOctalToDecimal(int octalNumber){
+  int decimalNumber = 0, i = 0;
 
+               while(octalNumber != 0)
+               {
+                   decimalNumber += (octalNumber%10) * pow(8,i);
+                   ++i;
+                   octalNumber/=10;
+               }
+
+               i = 1;
+
+               return decimalNumber;
+           }
 int main(int argc, char *argv[]) {
   int opt;
-  char* suite=NULL;
+  //char* suite=NULL;
+  char buf=NULL;
   char optstring[]="xlpz";
   //char test[512];
   int fd = open(argv[argc-1],O_RDONLY);
   //int fd2 = open("header.txt",O_WRONLY);
   struct header_posix_ustar ma_struct;
+  int i=0;
   while(read(fd,&ma_struct,512)!=0) {
     //read(fd,&ma_struct,512);
     //write(fd2,&ma_struct,512);
     //printf("%s\n",ma_struct.magic);
+    i+=1;
+    printf("bloc %d\n",i);
     if(strcmp(ma_struct.name,"\0")!=0) {
       printf("%s",ma_struct.name);
       //write(1,&ma_struct,100);
       printf("\n");
     }
+    int j=convertOctalToDecimal(atoi(ma_struct.size));
+    printf("%d\n",j);
+    lseek64(fd,j,SEEK_CUR);
   }
   //close(fd2);
   close(fd);
@@ -84,16 +104,26 @@ int main(int argc, char *argv[]) {
             }
           }
           close(fd2);
-          int fd3 = open(argv[argc-1],O_RDONLY);
-          while(read(fd3,&ma_struct,512)!=0) {
-            if(strcmp(ma_struct.typeflag,"0")==0) {
-              if(fork()==0) {
-                execl("/bin/touch","touch",ma_struct.name,NULL);
-                exit(0);
-              }
+        int fd3 = open(argv[argc-1],O_RDONLY);
+        while(read(fd3,&ma_struct,512)!=0) {
+          if(strcmp(ma_struct.typeflag,"0")==0) {
+            if(fork()==0) {
+              execl("/bin/touch","touch",ma_struct.name,NULL);
+              exit(0);
             }
           }
+        }
         close(fd3);
+      /*  int fd4 = open(argv[argc-1],O_RDONLY);
+        while(read(fd3,&ma_struct,512)!=0) {
+          if(strcmp(ma_struct.typeflag,"2")==0) {
+            if(fork()==0) {
+              execl("/bin/ln","ln -s",ma_struct.name,NULL);
+              exit(0);
+            }
+          }
+        }
+        close(fd4);*/
         break;
 
       case 'l':

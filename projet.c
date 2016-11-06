@@ -37,10 +37,13 @@ int main(int argc, char *argv[]) {
   while(read(fd,&ma_struct,512)!=0) {
     //read(fd,&ma_struct,512);
     //write(fd2,&ma_struct,512);
-    write(1,&ma_struct,100);
-    printf("\n");
+    //printf("%s\n",ma_struct.magic);
+    if(strcmp(ma_struct.name,"\0")!=0) {
+      printf("%s",ma_struct.name);
+      //write(1,&ma_struct,100);
+      printf("\n");
+    }
   }
-
   //close(fd2);
   close(fd);
 
@@ -50,7 +53,7 @@ int main(int argc, char *argv[]) {
         printf("option x \n");
         int fd2 = open(argv[argc-1],O_RDONLY);
         while(read(fd2,&ma_struct,512)!=0) {
-          if(strcmp(ma_struct.name,"\0")!=0) {
+        /*  if(strcmp(ma_struct.name,"\0")!=0) {
             if ((suite=strrchr(ma_struct.name,'/'))!=NULL) {
               printf("%s\n",suite);
               if (strcmp(suite,"/\0")==0) {
@@ -71,10 +74,26 @@ int main(int argc, char *argv[]) {
                 execl("/bin/touch","touch",ma_struct.name,NULL);
                 exit(0);
               }
+            } }
+*/
+           if (strcmp(ma_struct.typeflag,"5")==0){
+              if(fork()==0) {
+                execl("/bin/mkdir","mkdir",ma_struct.name,NULL);
+                exit(0);
+              }
             }
           }
-        }
-        close(fd2);
+          close(fd2);
+          int fd3 = open(argv[argc-1],O_RDONLY);
+          while(read(fd3,&ma_struct,512)!=0) {
+            if(strcmp(ma_struct.typeflag,"0")==0) {
+              if(fork()==0) {
+                execl("/bin/touch","touch",ma_struct.name,NULL);
+                exit(0);
+              }
+            }
+          }
+        close(fd3);
         break;
 
       case 'l':

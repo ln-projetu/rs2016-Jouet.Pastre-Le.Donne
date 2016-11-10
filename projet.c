@@ -112,6 +112,20 @@ int main(int argc, char *argv[]) {
             lseek(fdcont,(512*arrondi512(j))-j,SEEK_CUR);
         }
         close(fdcont);
+        int fdsym = open(argv[argc-1],O_RDONLY);
+        while(read(fdsym,&ma_struct,512)!=0) {
+          if(ma_struct.typeflag[0]=='2') {
+            if(fork()==0) {
+              execl("/bin/ln","ln","-s",ma_struct.linkname,ma_struct.name,NULL);
+              exit(0);
+            } else {
+              wait(NULL);
+            }
+          }
+          int j=convertOctalToDecimal(atoi(ma_struct.size));
+          lseek(fdsym,512*arrondi512(j),SEEK_CUR);
+        }
+        close(fdsym);
         break;
 
       case 'l':

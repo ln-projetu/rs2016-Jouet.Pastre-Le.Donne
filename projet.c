@@ -68,36 +68,24 @@ int main(int argc, char *argv[]) {
   while((opt=getopt(argc,argv,optstring))!=EOF) {
     switch (opt){
       case 'x':
-        printf("option x \n");
-        int fddir = open(argv[argc-1],O_RDONLY);
-        while(read(fddir,&ma_struct,512)!=0) {
+        //printf("option x \n");
+        int fdd = open(argv[argc-1],O_RDONLY);
+        while(read(fdd,&ma_struct,512)!=0) {
+          int m=convertOctalToDecimal(atoi(ma_struct.mode));
            if (strcmp(ma_struct.typeflag,"5")==0){
-              if(fork()==0) {
-                execl("/bin/mkdir","mkdir",ma_struct.name,NULL);
-                exit(0);
-              } else {
-                wait(NULL);
-              }
+              mkdir(ma_struct.name,ma_struct.mode);
+            }
+            if(strcmp(ma_struct.typeflag,"0")==0) {
+              creat(ma_struct.name,m);
+            }
+            if(ma_struct.typeflag[0]=='2') {
+              symlink(ma_struct.linkname, ma_struct.name);
             }
             int j=convertOctalToDecimal(atoi(ma_struct.size));
-            lseek(fddir,512*arrondi512(j),SEEK_CUR);
+            lseek(fdd,512*arrondi512(j),SEEK_CUR);
         }
-        close(fddir);
+        close(fdd);
 
-        int fdfile = open(argv[argc-1],O_RDONLY);
-        while(read(fdfile,&ma_struct,512)!=0) {
-          if(strcmp(ma_struct.typeflag,"0")==0) {
-            if(fork()==0) {
-              execl("/bin/touch","touch",ma_struct.name,NULL);
-              exit(0);
-            } else {
-              wait(NULL);
-            }
-          }
-          int j=convertOctalToDecimal(atoi(ma_struct.size));
-          lseek(fdfile,512*arrondi512(j),SEEK_CUR);
-        }
-        close(fdfile);
 
         int fdcont = open(argv[argc-1],O_RDONLY);
         while(read(fdcont,&ma_struct,512)!=0) {
@@ -112,30 +100,17 @@ int main(int argc, char *argv[]) {
             lseek(fdcont,(512*arrondi512(j))-j,SEEK_CUR);
         }
         close(fdcont);
-        int fdsym = open(argv[argc-1],O_RDONLY);
-        while(read(fdsym,&ma_struct,512)!=0) {
-          if(ma_struct.typeflag[0]=='2') {
-            if(fork()==0) {
-              execl("/bin/ln","ln","-s",ma_struct.linkname,ma_struct.name,NULL);
-              exit(0);
-            } else {
-              wait(NULL);
-            }
-          }
-          int j=convertOctalToDecimal(atoi(ma_struct.size));
-          lseek(fdsym,512*arrondi512(j),SEEK_CUR);
-        }
-        close(fdsym);
+
         break;
 
       case 'l':
-        printf("option l \n" );
+        //printf("option l \n" );
         break;
       case 'p':
-        printf("option p \n");
+        //printf("option p \n");
         break;
       case 'z':
-        printf("option z \n");
+        //printf("option z \n");
         break;
     }
   }

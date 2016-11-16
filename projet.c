@@ -61,6 +61,7 @@ int main(int argc, char *argv[]) {
   struct utimbuf utimbuf;
   struct timeval times[2];
   struct timeval const *tval;
+  struct tm ts;
   //struct timespec times[2];
   int i=0;
   while(read(fd,&ma_struct,512)!=0) {
@@ -166,7 +167,28 @@ int main(int argc, char *argv[]) {
         break;
 
       case 'l':
+        printf("\n");
         //printf("option l \n" );
+        char date[80];
+        char name[100];
+        char mode[8];
+        int uid;
+        int gid;
+        int size;
+        int fdl = open(argv[argc-1],O_RDONLY);
+        while(read(fdl,&ma_struct,512)!=0) {
+          strcpy(mode,"mode");
+          uid = (int) strtol(ma_struct.uid,NULL,8);
+          gid = (int) strtol(ma_struct.gid,NULL,8);
+          size = (int) strtol(ma_struct.size,NULL,8);
+          int mt=(int) strtol(ma_struct.mtime,NULL,8);
+          time_t tt=(time_t)mt;
+          ts=*localtime(&tt);
+          strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S",&ts);
+          strcpy(name,ma_struct.name);
+          printf("%s %d/%d %d %s %s\n",mode,uid,gid,size,date,name);
+          }
+        close(fdl);
         break;
       case 'p':
         //printf("option p \n");

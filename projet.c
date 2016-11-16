@@ -6,6 +6,10 @@
 #include <fcntl.h>
 #include <string.h>
 #include <math.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <utime.h>
+//#include <sys/time.h>
 struct header_posix_ustar {
                    char name[100];
                    char mode[8];
@@ -25,6 +29,7 @@ struct header_posix_ustar {
                    char prefix[155];
                    char pad[12];
            };
+
 
 long long convertOctalToDecimal(int octalNumber){
   int decimalNumber = 0, i = 0;
@@ -52,6 +57,11 @@ int main(int argc, char *argv[]) {
   char optstring[]="xlpz";
   int fd = open(argv[argc-1],O_RDONLY);
   struct header_posix_ustar ma_struct;
+  struct stat stats;
+  struct utimbuf utimbuf;
+  struct timeval times[2];
+  struct timeval const *tval;
+  //struct timespec times[2];
   int i=0;
   while(read(fd,&ma_struct,512)!=0) {
     i+=1;
@@ -68,12 +78,13 @@ int main(int argc, char *argv[]) {
   while((opt=getopt(argc,argv,optstring))!=EOF) {
     switch (opt){
       case 'x':
-        //printf("option x \n");
+        printf("\n");
         int fdd = open(argv[argc-1],O_RDONLY);
         while(read(fdd,&ma_struct,512)!=0) {
           int m=convertOctalToDecimal(atoi(ma_struct.mode));
+
            if (strcmp(ma_struct.typeflag,"5")==0){
-              mkdir(ma_struct.name,ma_struct.mode);
+              mkdir(ma_struct.name,(mode_t)m);
             }
             if(strcmp(ma_struct.typeflag,"0")==0) {
               creat(ma_struct.name,m);
@@ -100,6 +111,57 @@ int main(int argc, char *argv[]) {
             lseek(fdcont,(512*arrondi512(j))-j,SEEK_CUR);
         }
         close(fdcont);
+
+       int fdtime = open(argv[argc-1],O_RDONLY);
+        while(read(fdtime,&ma_struct,512)!=0) {
+          int j=(int) strtol(ma_struct.size,NULL,8);
+          int mt=(int) strtol(ma_struct.mtime,NULL,8);
+          //char buf[80];
+          //time_t tsec;
+          //struct tm ts;
+          time_t tt=(time_t)mt;
+          //ts=*localtime(&tt);
+          //printf("d");
+          //strftime(buf,sizeof(buf),"%Y-%m-%d %H:%M:%S",&ts);
+          //printf("%s\n",buf);
+          if(strcmp(ma_struct.typeflag,"0")==0) {
+            int fdfi = open(ma_struct.name,O_WRONLY);
+            int fds=fstat(fdfi,&stats);
+            utimbuf.actime=stats.st_atime;
+            utimbuf.modtime=tt;
+            int fdutime=utime(ma_struct.name,&utimbuf);
+            printf("%d\n",fdutime);
+            //int a=(int)stats.st_mtime;
+            //printf("stmtime: %d\n",a);
+            /*int b=(int)tt;
+            printf("tt: %d\n",b);
+            stats.st_ctime=tt;
+            int c=(int)stats.st_ctime;
+            printf("stmtime: %d\n",c);*/
+            close(fdfi);
+            close(fds);
+            close(fdutime);
+          }
+          if(ma_struct.typeflag[0]=='2') {
+            int fds=lstat(ma_struct.name,&stats);
+            times[0].tv_sec=(long)stats.st_atime;
+            times[0].tv_usec=0;
+            times[1].tv_sec=(long)tt;
+            times[1].tv_usec=0;
+            tval=times;
+            int fdutime=lutimes(ma_struct.name,tval);
+            close(fds);
+            close(fdutime);
+          }
+          if(strcmp(ma_struct.typeflag,"5")==0) {
+            int fds=stat(ma_struct.name,&stats);
+            utimbuf.actime=stats.st_atime;
+            utimbuf.modtime=tt;
+            int fdutime=utime(ma_struct.name,&utimbuf);
+          }
+            lseek(fdtime,(512*arrondi512(j)),SEEK_CUR);
+        }
+        close(fdtime);
 
         break;
 

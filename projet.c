@@ -30,18 +30,6 @@ struct header_posix_ustar {
                    char pad[12];
            };
 
-
-long long convertOctalToDecimal(int octalNumber){
-  int decimalNumber = 0, i = 0;
-  while(octalNumber != 0) {
-    decimalNumber += (octalNumber%10) * pow(8,i);
-    ++i;
-    octalNumber/=10;
-  }
-  i = 1;
-  return decimalNumber;
-}
-
 int arrondi512(int j) {
   int somme=0;
   int i512=0;
@@ -55,34 +43,26 @@ int arrondi512(int j) {
 int main(int argc, char *argv[]) {
   int opt;
   char optstring[]="xlpz";
-  int fd = open(argv[argc-1],O_RDONLY);
+
   struct header_posix_ustar ma_struct;
   struct stat stats;
   struct utimbuf utimbuf;
   struct timeval times[2];
   struct timeval const *tval;
   struct tm ts;
-  //struct timespec times[2];
   int i=0;
-  while(read(fd,&ma_struct,512)!=0) {
-    i+=1;
-    if(strcmp(ma_struct.name,"\0")!=0) {
-      printf("%s",ma_struct.name);
-      //write(1,&ma_struct,100);
-      printf("\n");
-    }
-    int j=convertOctalToDecimal(atoi(ma_struct.size));
-    lseek(fd,512*arrondi512(j),SEEK_CUR);
-  }
-  close(fd);
+  int lcase=0;
+
+
 
   while((opt=getopt(argc,argv,optstring))!=EOF) {
+    int fdx;
+    int fdl;
     switch (opt){
       case 'x':
-        printf("\n");
-        int fdd = open(argv[argc-1],O_RDONLY);
-        while(read(fdd,&ma_struct,512)!=0) {
-          int m=convertOctalToDecimal(atoi(ma_struct.mode));
+        fdx = open(argv[argc-1],O_RDONLY);
+        while(read(fdx,&ma_struct,512)!=0) {
+          int m=(int) strtol(ma_struct.mode,NULL,8);
 
            if (strcmp(ma_struct.typeflag,"5")==0){
               mkdir(ma_struct.name,(mode_t)m);
@@ -93,15 +73,15 @@ int main(int argc, char *argv[]) {
             if(ma_struct.typeflag[0]=='2') {
               symlink(ma_struct.linkname, ma_struct.name);
             }
-            int j=convertOctalToDecimal(atoi(ma_struct.size));
-            lseek(fdd,512*arrondi512(j),SEEK_CUR);
+            int j=(int) strtol(ma_struct.size,NULL,8);
+            lseek(fdx,512*arrondi512(j),SEEK_CUR);
         }
-        close(fdd);
+        close(fdx);
 
 
         int fdcont = open(argv[argc-1],O_RDONLY);
         while(read(fdcont,&ma_struct,512)!=0) {
-          int j=convertOctalToDecimal(atoi(ma_struct.size));
+          int j=(int) strtol(ma_struct.size,NULL,8);
           if(strcmp(ma_struct.typeflag,"0")==0) {
             char buffer[j];
             int fdfichier = open(ma_struct.name,O_WRONLY);
@@ -117,31 +97,14 @@ int main(int argc, char *argv[]) {
         while(read(fdtime,&ma_struct,512)!=0) {
           int j=(int) strtol(ma_struct.size,NULL,8);
           int mt=(int) strtol(ma_struct.mtime,NULL,8);
-          //char buf[80];
-          //time_t tsec;
-          //struct tm ts;
           time_t tt=(time_t)mt;
-          //ts=*localtime(&tt);
-          //printf("d");
-          //strftime(buf,sizeof(buf),"%Y-%m-%d %H:%M:%S",&ts);
-          //printf("%s\n",buf);
           if(strcmp(ma_struct.typeflag,"0")==0) {
             int fdfi = open(ma_struct.name,O_WRONLY);
             int fds=fstat(fdfi,&stats);
             utimbuf.actime=stats.st_atime;
             utimbuf.modtime=tt;
             int fdutime=utime(ma_struct.name,&utimbuf);
-            printf("%d\n",fdutime);
-            //int a=(int)stats.st_mtime;
-            //printf("stmtime: %d\n",a);
-            /*int b=(int)tt;
-            printf("tt: %d\n",b);
-            stats.st_ctime=tt;
-            int c=(int)stats.st_ctime;
-            printf("stmtime: %d\n",c);*/
             close(fdfi);
-            close(fds);
-            close(fdutime);
           }
           if(ma_struct.typeflag[0]=='2') {
             int fds=lstat(ma_struct.name,&stats);
@@ -151,8 +114,6 @@ int main(int argc, char *argv[]) {
             times[1].tv_usec=0;
             tval=times;
             int fdutime=lutimes(ma_struct.name,tval);
-            close(fds);
-            close(fdutime);
           }
           if(strcmp(ma_struct.typeflag,"5")==0) {
             int fds=stat(ma_struct.name,&stats);
@@ -167,26 +128,72 @@ int main(int argc, char *argv[]) {
         break;
 
       case 'l':
-        printf("\n");
-        //printf("option l \n" );
+      lcase=1;
+        fdl = open(argv[argc-1],O_RDONLY);
         char date[80];
         char name[100];
-        char mode[8];
+        char mode[10];
         int uid;
         int gid;
         int size;
-        int fdl = open(argv[argc-1],O_RDONLY);
         while(read(fdl,&ma_struct,512)!=0) {
-          strcpy(mode,"mode");
-          uid = (int) strtol(ma_struct.uid,NULL,8);
-          gid = (int) strtol(ma_struct.gid,NULL,8);
-          size = (int) strtol(ma_struct.size,NULL,8);
-          int mt=(int) strtol(ma_struct.mtime,NULL,8);
-          time_t tt=(time_t)mt;
-          ts=*localtime(&tt);
-          strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S",&ts);
-          strcpy(name,ma_struct.name);
-          printf("%s %d/%d %d %s %s\n",mode,uid,gid,size,date,name);
+          if(strcmp(ma_struct.name,"\0")!=0) {
+            strcpy(mode,"mode");
+            int modei=(int)atoi(ma_struct.mode);
+            int modedet[3];
+            modedet[0]=modei/100;
+            modedet[1]=(modei-(modedet[0]*100))/10;
+            modedet[2]=(modei-(modedet[0]*100+modedet[1]*10));
+            if(strcmp(ma_struct.typeflag,"0")==0) {
+              strcpy(mode,"-");
+            }
+            if(ma_struct.typeflag[0]=='2') {
+              strcpy(mode,"l");
+            }
+            if(strcmp(ma_struct.typeflag,"5")==0) {
+              strcpy(mode,"d");
+            }
+            int i;
+            for (i=0; i<3; i++) {
+              switch (modedet[i]){
+                case 7:
+                strcat(mode,"rwx");
+                break;
+                case 6:
+                strcat(mode,"rw-");
+                break;
+                case 5:
+                strcat(mode,"r-x");
+                break;
+                case 4:
+                strcat(mode,"r--");
+                break;
+                case 3:
+                strcat(mode,"-wx");
+                break;
+                case 2:
+                strcat(mode,"-w-");
+                break;
+                case 1:
+                strcat(mode,"--x");
+                break;
+                case 0:
+                strcat(mode,"---");
+                break;
+              }
+            }
+
+            uid = (int) strtol(ma_struct.uid,NULL,8);
+            gid = (int) strtol(ma_struct.gid,NULL,8);
+            size = (int) strtol(ma_struct.size,NULL,8);
+            int mt=(int) strtol(ma_struct.mtime,NULL,8);
+            time_t tt=(time_t)mt;
+            ts=*localtime(&tt);
+            strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S",&ts);
+            strcpy(name,ma_struct.name);
+            printf("%s %d/%d %d %s %s\n",mode,uid,gid,size,date,name);
+            }
+          lseek(fdl,(512*arrondi512(size)),SEEK_CUR);
           }
         close(fdl);
         break;
@@ -199,5 +206,18 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if (lcase==0) {
+    int fd = open(argv[argc-1],O_RDONLY);
+    while(read(fd,&ma_struct,512)!=0) {
+      i+=1;
+      if(strcmp(ma_struct.name,"\0")!=0) {
+        printf("%s",ma_struct.name);
+        printf("\n");
+      }
+      int j=(int) strtol(ma_struct.size,NULL,8);
+      lseek(fd,512*arrondi512(j),SEEK_CUR);
+    }
+    close(fd);
+  }
   return 0;
 }

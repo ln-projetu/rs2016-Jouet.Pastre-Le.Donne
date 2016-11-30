@@ -123,6 +123,7 @@ int main(int argc, char *argv[]) {
         fdl = open(argv[argc-1],O_RDONLY);
         char date[80];
         char name[100];
+        char linkname[100];
         char mode[10];
         int uid;
         int gid;
@@ -184,7 +185,12 @@ int main(int argc, char *argv[]) {
             ts=*localtime(&tt);
             strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S",&ts);
             strcpy(name,ma_struct.name);
-            printf("%s %d/%d %d %s %s\n",mode,uid,gid,size,date,name);
+            if (ma_struct.typeflag[0]=='2') {
+              strcpy(linkname,ma_struct.linkname);
+              printf("%s %d/%d %d %s %s -> %s\n",mode,uid,gid,size,date,name,linkname);
+            } else {
+              printf("%s %d/%d %d %s %s\n",mode,uid,gid,size,date,name);
+              }
             }
           lseek(fdl,(512*arrondi512(size)),SEEK_CUR);
           }
@@ -194,7 +200,7 @@ int main(int argc, char *argv[]) {
       case 'p':
         //printf("option p \n");
         break;
-        
+
       case 'z':
         //printf("option z \n");
         break;
